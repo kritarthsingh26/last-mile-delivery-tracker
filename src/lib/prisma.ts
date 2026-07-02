@@ -1,24 +1,18 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import path from "path";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 let prisma: PrismaClient;
 
 const getPrismaClient = () => {
-  // Read database URL from environment or fallback to default SQLite path
-  let databaseUrl = process.env.DATABASE_URL || "file:./dev.db";
-  
-  if (databaseUrl.startsWith("file:")) {
-    const relativePath = databaseUrl.replace("file:", "");
-    // Resolve relative to project root (process.cwd())
-    const absolutePath = path.resolve(process.cwd(), relativePath);
-    databaseUrl = `file:${absolutePath}`;
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL environment variable is not set");
   }
   
-  // Set up SQLite adapter for Prisma 7
-  const adapter = new PrismaBetterSqlite3({
-    url: databaseUrl,
-  });
+  // Setup Postgres pool and driver adapter for Prisma 7
+  const pool = new Pool({ connectionString: databaseUrl });
+  const adapter = new PrismaPg(pool);
   
   return new PrismaClient({ adapter });
 };

@@ -1,13 +1,17 @@
+require("dotenv").config();
 const { PrismaClient } = require("@prisma/client");
-const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
+const { PrismaPg } = require("@prisma/adapter-pg");
+const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 
-const databaseUrl = process.env.DATABASE_URL || "file:./dev.db";
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  console.error("DATABASE_URL environment variable is not set. Cannot run seed.");
+  process.exit(1);
+}
 
-const adapter = new PrismaBetterSqlite3({
-  url: databaseUrl,
-});
-
+const pool = new Pool({ connectionString: databaseUrl });
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
