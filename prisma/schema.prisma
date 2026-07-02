@@ -1,0 +1,98 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         String        // "ADMIN", "CUSTOMER", "AGENT"
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  orders       Order[]       @relation("CustomerOrders")
+  agentProfile AgentProfile?
+  actions      OrderTrackingHistory[]
+}
+
+model Zone {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  pincodes  String   // Comma-separated list (e.g., "110001,110002")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pickupOrders Order[] @relation("PickupZone")
+  dropOrders   Order[] @relation("DropZone")
+}
+
+model RateCard {
+  id                  String   @id @default(uuid())
+  orderType           String   // "B2B", "B2C"
+  intraZoneRatePerKg  Float
+  interZoneRatePerKg  Float
+  codSurcharge        Float    // Flat surcharge for COD payment
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model AgentProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String   // "AVAILABLE", "BUSY", "OFFLINE"
+  currentZone String?  // Active zone name for local filtering
+  latitude    Float    // For geographical nearest-agent calculations
+  longitude   Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id                String                 @id @default(uuid())
+  orderNumber       String                 @unique // e.g. "LMD-2026-XXXXX"
+  customerId        String
+  customer          User                   @relation("CustomerOrders", fields: [customerId], references: [id])
+  pickupAddress     String
+  pickupPincode     String
+  pickupZoneId      String?
+  pickupZone        Zone?                  @relation("PickupZone", fields: [pickupZoneId], references: [id])
+  dropAddress       String
+  dropPincode       String
+  dropZoneId        String?
+  dropZone          Zone?                  @relation("DropZone", fields: [dropZoneId], references: [id])
+  length            Float
+  width             Float
+  height            Float
+  actualWeight      Float
+  volumetricWeight  Float
+  chargeableWeight  Float
+  orderType         String                 // "B2B", "B2C"
+  paymentType       String                 // "PREPAID", "COD"
+  baseCharge        Float
+  codSurcharge      Float
+  totalCharge       Float
+  status            String                 // "PENDING", "ASSIGNED", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED", "RESCHEDULED"
+  agentId           String?
+  scheduledDate     DateTime               @default(now())
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  trackingHistory   OrderTrackingHistory[]
+}
+
+model OrderTrackingHistory {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    String
+  timestamp DateTime @default(now())
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  remarks   String?
+}
